@@ -27,6 +27,7 @@ public class MotorActions {
     public final OutTakeLeft OutTakeLeft;
     public final OutTakeRight OutTakeRight;
     public final OutTakeArm OutTakeArm;
+    public final ArmGate armGate;
 
 
 
@@ -39,6 +40,7 @@ public class MotorActions {
         this.OutTakeLeft = new OutTakeLeft();
         this.OutTakeRight = new OutTakeRight();
         this.OutTakeArm = new OutTakeArm();
+        this.armGate = new ArmGate();
     }
     public Action ClawClose() {
 
@@ -58,24 +60,55 @@ public class MotorActions {
     public Action intake(){
         currentIn = PositionsClass.IntakePosition.Intake;
         return new SequentialAction(
-                IntakeArmServo.Fifth(),
-                intakeArm.MidTransfer(),
-                intakeArm.waitUntilFinished(),
+                armGate.Close(),
+                IntakeArmServo.Zero(),
                 intakeArm.Intake(),
+                intakeArm.waitUntilFinished()
+        );
+    }
+
+    public Action placePixelOnMarker(){
+        return  new SequentialAction(
+                intakeArm.midFromLow(),
+                IntakeArmServo.PixelOut(),
                 intakeArm.waitUntilFinished(),
-                new SleepAction(1),
-                ClawOpen()
+                flopper.depositPixel()
         );
     }
 
     public Action transfer(){
         currentIn = PositionsClass.IntakePosition.Transfer;
         return new SequentialAction(
-                intakeArm.MidTransfer(),
+                ClawOpen(),
+                flopper.hold(),
+                IntakeArmServo.Transfer(),
+                intakeArm.midFromLow(),
                 intakeArm.waitUntilFinished(),
+                IntakeArmServo.Idle(),
                 intakeArm.Transfer(),
                 intakeArm.waitUntilFinished(),
+                armGate.Open(),
+                new SleepAction(0.5),
+                flopper.stop(),
+                        new SleepAction(0.5),
                 ClawClose()
+
+        );
+    }
+
+    public Action pixelBackDrop(double pos){
+        return new SequentialAction(
+                ClawClose(),
+                slide.Clearence(),
+                slide.waitUntilFinished(),
+                slide.setTargetPosition(pos),
+                OutTakeArm.Up()
+        );
+    }
+    public Action liftDown(){
+        return new SequentialAction(
+                OutTakeArm.Down(),
+                slide.downPosition()
         );
     }
     public Action flipperDown(){
@@ -123,23 +156,21 @@ public class MotorActions {
      public Action downPosition() {
          return setTargetPosition(0);
      }
-     public Action temp() {
+     public Action Clearence() {
          return setTargetPosition(100);
      }
-     public Action up() {
+     public Action first() {
          return setTargetPosition(400);
      }
-     public Action midPosition() {
-         return setTargetPosition(350);
-     }
-     public Action backMidPosition() {
-         return setTargetPosition(1100);
+     public Action second() {
+         return setTargetPosition(700);
      }
     }
     public class IntakeArm {
-        public Action setTargetPosition(double position) {
+        public Action setTargetPosition(double position, float power) {
             return t -> {
                 motorControl.intakeArm.setTargetPosition(position);
+                motorControl.intakeArm.setPower(power);
                 return false;
             };
         }
@@ -151,22 +182,22 @@ public class MotorActions {
                 }
             };
         }
-        public Action forceDown() {
-            return setTargetPosition(-20);
-        }
         public Action reset() {
             return new SequentialAction(t -> {motorControl.intakeArm.reset();return false;},
                     new SleepAction(0.1));
         }
 
         public Action Transfer() {
-            return setTargetPosition(600);
+            return setTargetPosition(635, 0.3f);
         }
-        public Action MidTransfer() {
-            return setTargetPosition(250);
+        public Action midFromLow() {
+            return setTargetPosition(250, 0.3f);
+        }
+        public Action midFromHigh() {
+            return setTargetPosition(250, 0.3f);
         }
         public Action Intake() {
-            return setTargetPosition(0);
+            return setTargetPosition(-10, 0.3f);
         }
 
     }
@@ -200,13 +231,17 @@ public class MotorActions {
             return setTargetPosition(150);
         }
         public Action intakePixel() {
-            return setTargetPosition(3000);
+
+            return setTargetPosition(-3000);
+        }
+        public Action hold() {
+
+            return setTargetPosition(-20000);
         }
     }
     public class IntakeArmServo {
         public Action Fifth() {
             return new SequentialAction(t -> {
-                motorControl.intakeArmRight.setPosition(0.55);
                 motorControl.intakeArmLeft.setPosition(0.45);
                 return false;
             },
@@ -214,7 +249,6 @@ public class MotorActions {
         }
         public Action Fourth() {
             return new SequentialAction(t -> {
-                motorControl.intakeArmRight.setPosition(0.66);
                 motorControl.intakeArmLeft.setPosition(0.50);
                 return false;
             },
@@ -222,7 +256,6 @@ public class MotorActions {
         }
         public Action Third() {
             return new SequentialAction(t -> {
-                motorControl.intakeArmRight.setPosition(0.64);
                 motorControl.intakeArmLeft.setPosition(0.505);
                 return false;
             },
@@ -230,7 +263,6 @@ public class MotorActions {
         }
         public Action Second() {
             return new SequentialAction(t -> {
-                motorControl.intakeArmRight.setPosition(0.625);
                 motorControl.intakeArmLeft.setPosition(0.510);
                 return false;
             },
@@ -238,7 +270,6 @@ public class MotorActions {
         }
         public Action Last() {
             return new SequentialAction(t -> {
-                motorControl.intakeArmRight.setPosition(0.595);
                 motorControl.intakeArmLeft.setPosition(0.515);
                 return false;
             },
@@ -246,29 +277,42 @@ public class MotorActions {
         }
         public Action Transfer() {
             return new SequentialAction(t -> {
-                motorControl.intakeArmRight.setPosition(0.3);
-                motorControl.intakeArmLeft.setPosition(0.56);
-
+                motorControl.intakeArmLeft.setPosition(0.7);
                 return false;
             },
                     new SleepAction(0.3));
         }
-        public Action Up() {
+        public Action PixelOut() {
             return new SequentialAction(t -> {
-                motorControl.intakeArmLeft.setPosition(0.4);
-                motorControl.intakeArmRight.setPosition(0.2);
+                motorControl.intakeArmLeft.setPosition(1);
+                return false;
+            },
+                    new SleepAction(0.3));
+        }
+        public Action Zero() {
+            return new SequentialAction(t -> {
+                motorControl.intakeArmLeft.setPosition(0);
 
                 return false;
             },
                     new SleepAction(0.3));
         }
+        public Action Idle() {
+            return new SequentialAction(t -> {
+                motorControl.intakeArmLeft.setPosition(1);
+
+                return false;
+            },
+                    new SleepAction(0.3));
+        }
+
     }
 
     public class OutTakeLeft {
         public Action Close() {
             currentOut = PositionsClass.OuttakePosition.Close;
             return new SequentialAction(t -> {
-                motorControl.outTakeClawLeft.setPosition(0.6);
+                motorControl.outTakeClawLeft.setPosition(0.5);
                 return false;
             },
                     new SleepAction(0.3));
@@ -277,6 +321,23 @@ public class MotorActions {
             currentOut = PositionsClass.OuttakePosition.Open;
             return new SequentialAction(t -> {
                 motorControl.outTakeClawLeft.setPosition(0);
+                return false;
+            },
+                    new SleepAction(0.3));
+        }
+    }
+
+    public class ArmGate {
+        public Action Open() {
+            return new SequentialAction(t -> {
+                motorControl.armGate.setPosition(0.5);
+                return false;
+            },
+                    new SleepAction(0.3));
+        }
+        public Action Close() {
+            return new SequentialAction(t -> {
+                motorControl.armGate.setPosition(0);
                 return false;
             },
                     new SleepAction(0.3));
@@ -295,7 +356,7 @@ public class MotorActions {
         public Action Open() {
             currentRight = PositionsClass.OuttakePositionRight.Open;
             return new SequentialAction(t -> {
-                motorControl.outTakeClawRight.setPosition(0.8);
+                motorControl.outTakeClawRight.setPosition(0.7);
                 return false;
             },
                     new SleepAction(0.3));

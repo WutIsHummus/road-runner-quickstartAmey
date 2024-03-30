@@ -37,10 +37,21 @@ public class FarParkLeftPixel extends AbstractVisionOpMode {
     @Override
     public Action trajLeft(AprilTagDrive drive, MotorActions motorActions) {
         return drive.actionBuilder(drive.pose) // new Pose2d(-36,-62,Math.toRadians(-90))
-                .splineTo( new Vector2d(15,-33), Math.toRadians(90))
-                .stopAndAdd(motorActions.intakeArm.MidTransfer())
-                .stopAndAdd(motorActions.IntakeArmServo.Transfer())
-                .waitSeconds(4)
+                // GO TO PIXEL MARKER
+                .splineToConstantHeading(new Vector2d(15,35), Math.toRadians(-90))
+                .stopAndAdd(motorActions.placePixelOnMarker())
+                .endTrajectory()
+                .setTangent(Math.toRadians(0))
+                // GO TO BACK BOARD
+                .splineToLinearHeading(new Pose2d(47,35,Math.toRadians(180)), Math.toRadians(0))
+                // ADD ACTION TO DEPOSIT YELLOW PIXEL
+                .afterTime(1, motorActions.pixelBackDrop(400))
+                .stopAndAdd(motorActions.ClawOpen())
+                .endTrajectory()
+                .setTangent(Math.toRadians(180))
+                .setReversed(false)
+                .splineTo(new Vector2d(20, 10), Math.toRadians(180))
+                .afterDisp(1, motorActions.liftDown())
                 .build();
     }
     @Override

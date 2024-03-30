@@ -23,6 +23,7 @@ public class MotorControl {
     public final CachingServo outTakeClawLeft;
     public final CachingServo outTakeClawRight;
     public final CachingServo outTakeArm;
+    public final CachingServo armGate;
 
     public final Slide slide;
     public final IntakeArm intakeArm;
@@ -44,6 +45,8 @@ public class MotorControl {
         outTakeClawLeft =  new CachingServo(hardwareMap.get(Servo.class, "clawLeft"));
         outTakeClawRight =  new CachingServo(hardwareMap.get(Servo.class, "clawRight"));
         outTakeArm =  new CachingServo(hardwareMap.get(Servo.class, "flipper"));
+        armGate = new CachingServo(hardwareMap.get(Servo.class, "armGate"));
+        armGate.setPosition(0);
     }
 
     /**
@@ -51,8 +54,9 @@ public class MotorControl {
      */
     public void update() {
         slide.update();
-        intakeArm.update();
         flopper.update();
+        float currentArmPos = intakeArm.motor.getCurrentPosition();
+        double currentArmTarget = intakeArm.targetPosition;
     }
 
 
@@ -64,6 +68,9 @@ public class MotorControl {
         private final double ticks_in_degree = 1993.6/180;
         double thresh = 0.6;
         boolean resetting = false;
+
+
+
         /**
          * This initializes the slide motor. This should be run before any other methods.
          *
@@ -74,7 +81,7 @@ public class MotorControl {
             motor = new CachingDcMotorEX(hardwareMap.get(DcMotorEx.class, "boxLifter"), 0.005);
             motor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
             motor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-            motor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER );
+            motor.setMode(DcMotor.RunMode.RUN_USING_ENCODER );
         }
 
         /**
@@ -84,28 +91,23 @@ public class MotorControl {
             motor.setPower(0);
             targetPosition = 0;
             motor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-            motor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER );
+            motor.setMode(DcMotor.RunMode.RUN_USING_ENCODER );
         }
 
+        @Override
+        public void setTargetPosition(double targetPosition) {
+            this.targetPosition = targetPosition;
+            motor.setTargetPosition((int) targetPosition);
+            motor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        }
 
+        public void setPower(float power){
+            motor.setPower(power);
+        }
         /**
          * This updates the slide motor to match the current state. This should be run in a loop.
          */
         public void update() {
-
-            int pos = motor.getCurrentPosition();
-            IntakeArmController.setPID(p,i,d);
-            double pid = IntakeArmController.calculate(pos, targetPosition);
-            double ff = Math.cos(Math.toRadians(targetPosition/ ticks_in_degree)) * f;
-            double power = pid + ff;
-
-            if (motor.isOverCurrent()) {
-                reset();
-            } else {
-                if (targetPosition > 300) motor.setPower(power);
-                else motor.setPower(Math.min(0.3, power));
-
-            }
         }
 
         public void findZero() {
@@ -121,7 +123,7 @@ public class MotorControl {
          * @return boolean indicating whether the current position is close to the target.
          */
         public boolean closeEnough() {
-            return Math.abs(motor.getCurrentPosition() - targetPosition) < 20;
+            return Math.abs(motor.getCurrentPosition() - targetPosition) < 20;  
         }
 
 
@@ -280,6 +282,8 @@ public class MotorControl {
         public void setTargetPosition(double targetPosition) {
             this.targetPosition = targetPosition;
         }
+
+
         public abstract void update();
         public abstract void reset();
         public abstract boolean closeEnough();

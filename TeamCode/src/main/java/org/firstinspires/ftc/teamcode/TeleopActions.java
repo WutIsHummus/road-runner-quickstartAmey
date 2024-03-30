@@ -144,18 +144,20 @@ public class TeleopActions extends ActionOpMode {
             boolean padForceDown = gamepad2.dpad_down && gamepad2.options;
 
 
-            double r = Math.hypot(-gamepad1.left_stick_x, gamepad1.left_stick_y);
-            double robotAngle = Math.atan2(gamepad1.left_stick_y, -gamepad1.left_stick_x) - Math.PI / 4;
-            double rightX = gamepad1.right_stick_x / 1.5;
+            double r = Math.hypot(-gamepad1.right_stick_x, gamepad1.right_stick_y);
+            double robotAngle = Math.atan2(gamepad1.right_stick_y, -gamepad1.right_stick_x) - Math.PI / 4;
+            double rightX = gamepad1.left_stick_x / 1.5;
             final double v1 = -r * Math.cos(robotAngle) + rightX;
             final double v2 = -r * Math.sin(robotAngle) - rightX;
             final double v3 = -r * Math.sin(robotAngle) + rightX;
             final double v4 = -r * Math.cos(robotAngle) - rightX;
 
+            // Set motor powers
             FL.setPower(v1 * 1);
             FR.setPower(v2 * 1);
             BL.setPower(v3 * 1);
             BR.setPower(v4 * 1);
+
 
 
             // Slide (Manual)
@@ -172,6 +174,13 @@ public class TeleopActions extends ActionOpMode {
 
             if (gamepad2.dpad_right&& !previousGamepad2.dpad_right && !current.equals(IntakePosition.Intake)){
                 run(intake());
+            }
+
+            if (motorControl.slide.getTargetPosition() >  300) {
+                run(motorActions.ClawOpen());
+            }
+            else {
+                run(motorActions.ClawClose());
             }
 
             if (gamepad2.a && !previousGamepad2.a){
